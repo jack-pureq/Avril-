@@ -3,218 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Montessori Kids - Aprende a Contar</title>
+    <title>Montessori Progresivo</title>
     <style>
-        /* CSS INTEGRADO */
         :root {
-            --bg-color: #fdf6e3;
-            --accent-color: #d3a27f;
-            --apple-color: #e63946;
-            --basket-color: #bc6c25;
-            --text-color: #5d4037;
-            --success-color: #8fb339;
+            --bg: #fdf6e3; --text: #5d4037; --accent: #d3a27f;
+            --level1: #e63946; --level2: #457b9d; --level3: #a8dadc;
         }
-
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-            touch-action: none; /* Crucial para evitar scroll al arrastrar */
+        body { 
+            margin: 0; background: var(--bg); font-family: sans-serif; 
+            display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; touch-action: none;
         }
-
-        #ui-container {
-            text-align: center;
-            margin-bottom: 10px;
-            padding: 0 20px;
+        #header { text-align: center; padding: 10px; width: 100%; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        h2 { margin: 5px; color: var(--text); font-size: 1.2rem; }
+        #gameCanvas { background: white; border: 4px solid var(--accent); border-radius: 15px; margin: 10px; max-width: 95%; cursor: pointer; }
+        .nav { display: flex; gap: 10px; margin-bottom: 10px; }
+        button { 
+            padding: 10px 20px; border-radius: 20px; border: none; background: var(--text); color: white; font-weight: bold;
         }
-
-        h1 {
-            color: var(--text-color);
-            font-size: 1.5rem;
-            margin: 10px 0;
-        }
-
-        #gameCanvas {
-            background: #ffffff;
-            border: 4px solid var(--accent-color);
-            border-radius: 20px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-            max-width: 95%;
-            max-height: 70vh;
-            touch-action: none;
-        }
-
-        .controls {
-            margin-top: 15px;
-        }
-
-        button {
-            padding: 12px 25px;
-            font-size: 1.1rem;
-            background-color: var(--success-color);
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            box-shadow: 0 4px 0 #6e8a2b;
-            transition: transform 0.1s;
-        }
-
-        button:active {
-            transform: translateY(3px);
-            box-shadow: 0 1px 0 #6e8a2b;
-        }
+        .active-btn { background: #8fb339; transform: scale(1.1); }
     </style>
 </head>
 <body>
 
-    <div id="ui-container">
-        <h1 id="instruction">🍎 Arrastra 3 manzanas a la cesta</h1>
+<div id="header">
+    <div class="nav">
+        <button id="btn1" class="active-btn" onclick="changeLevel(1)">1. Cantidad</button>
+        <button id="btn2" onclick="changeLevel(2)">2. Suma</button>
+        <button id="btn3" onclick="changeLevel(3)">3. Letras</button>
     </div>
+    <h2 id="msg">Cargando...</h2>
+</div>
 
-    <canvas id="gameCanvas"></canvas>
+<canvas id="gameCanvas"></canvas>
 
-    <div class="controls">
-        <button onclick="resetGame()">Reiniciar Juego</button>
-    </div>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const msg = document.getElementById('msg');
+    
+    let currentLevel = 1;
+    let items = [];
+    let targets = [];
+    let dragItem = null;
 
-    <script>
-        /* JS INTEGRADO */
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const instruction = document.getElementById('instruction');
+    function initLevel(lvl) {
+        currentLevel = lvl;
+        items = [];
+        targets = [];
+        canvas.width = Math.min(window.innerWidth - 20, 600);
+        canvas.height = 400;
 
-        // Configuración de pantalla
-        function resize() {
-            canvas.width = window.innerWidth > 800 ? 800 : window.innerWidth - 20;
-            canvas.height = 450;
-            draw();
+        // Actualizar botones UI
+        document.querySelectorAll('button').forEach((b, i) => b.className = (i+1 === lvl ? 'active-btn' : ''));
+
+        if(lvl === 1) {
+            msg.innerText = "Pon 4 manzanas en la cesta";
+            for(let i=0; i<6; i++) items.push({x: 50 + i*80, y: 80, r: 30, color: '#e63946', in: false, type: 'apple'});
+            targets.push({x: 150, y: 250, w: 300, h: 120, goal: 4});
+        } 
+        else if(lvl === 2) {
+            msg.innerText = "¿Cuánto es 2 + 1? Arrastra el resultado";
+            items.push({x: 100, y: 100, r: 35, val: 2, color: '#457b9d'});
+            items.push({x: 300, y: 100, r: 35, val: 3, color: '#457b9d'});
+            items.push({x: 500, y: 100, r: 35, val: 5, color: '#457b9d'});
+            targets.push({x: 200, y: 250, w: 200, h: 100, goal: 3});
         }
+        else if(lvl === 3) {
+            msg.innerText = "Busca la letra 'A' de Abeja";
+            const letras = ['E', 'A', 'O'];
+            letras.forEach((l, i) => items.push({x: 100 + i*180, y: 100, r: 40, val: l, color: '#f4a261'}));
+            targets.push({x: 200, y: 250, w: 200, h: 100, goal: 'A'});
+        }
+        draw();
+    }
 
-        // Estado del juego
-        let apples = [
-            { id: 1, x: 80, y: 100, r: 35, color: '#e63946', dragging: false, inBasket: false },
-            { id: 2, x: 170, y: 100, r: 35, color: '#e63946', dragging: false, inBasket: false },
-            { id: 3, x: 260, y: 100, r: 35, color: '#e63946', dragging: false, inBasket: false }
-        ];
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Dibujar zonas de destino
+        targets.forEach(t => {
+            ctx.strokeStyle = '#ccc'; ctx.setLineDash([5, 5]);
+            ctx.strokeRect(t.x, t.y, t.w, t.h);
+            ctx.setLineDash([]);
+            ctx.fillStyle = "#f0f0f0";
+            ctx.fillRect(t.x, t.y, t.w, t.h);
+        });
 
-        const basket = { x: 450, y: 250, w: 250, h: 150 };
-        let dragItem = null;
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Dibujar Cesta (Estética simple)
-            ctx.fillStyle = '#bc6c25';
+        // Dibujar objetos
+        items.forEach(item => {
             ctx.beginPath();
-            ctx.roundRect(basket.x, basket.y, basket.w, basket.h, 20);
+            ctx.arc(item.x, item.y, item.r, 0, Math.PI*2);
+            ctx.fillStyle = item.color;
             ctx.fill();
-            
-            // Texto de la cesta
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.font = 'bold 24px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText("CESTA", basket.x + basket.w/2, basket.y + basket.h/2 + 10);
+            ctx.fillStyle = "white";
+            ctx.font = "bold 30px Arial";
+            ctx.textAlign = "center";
+            if(item.val) ctx.fillText(item.val, item.x, item.y + 10);
+            ctx.closePath();
+        });
+    }
 
-            // Dibujar Manzanas
-            apples.forEach(apple => {
-                ctx.beginPath();
-                ctx.arc(apple.x, apple.y, apple.r, 0, Math.PI * 2);
-                ctx.fillStyle = apple.color;
-                ctx.fill();
-                // Tallo de la manzana
-                ctx.fillStyle = '#4b2c20';
-                ctx.fillRect(apple.x - 2, apple.y - apple.r - 5, 4, 10);
-                ctx.closePath();
-            });
-        }
-
-        // Manejadores de eventos (Mouse y Touch)
-        function getCoords(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return {
-                x: (clientX - rect.left) * (canvas.width / rect.width),
-                y: (clientY - rect.top) * (canvas.height / rect.height)
-            };
-        }
-
-        function onStart(e) {
-            const coords = getCoords(e);
-            apples.forEach(apple => {
-                const dist = Math.hypot(apple.x - coords.x, apple.y - coords.y);
-                if (dist < apple.r) {
-                    apple.dragging = true;
-                    dragItem = apple;
-                }
-            });
-        }
-
-        function onMove(e) {
-            if (!dragItem) return;
-            const coords = getCoords(e);
-            dragItem.x = coords.x;
-            dragItem.y = coords.y;
-            
-            // Check si entró en la cesta
-            if (dragItem.x > basket.x && dragItem.x < basket.x + basket.w &&
-                dragItem.y > basket.y && dragItem.y < basket.y + basket.h) {
-                dragItem.inBasket = true;
-            } else {
-                dragItem.inBasket = false;
+    function handleInput(ex, ey) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (ex - rect.left) * (canvas.width / rect.width);
+        const y = (ey - rect.top) * (canvas.height / rect.height);
+        
+        items.forEach(item => {
+            if(Math.hypot(item.x - x, item.y - y) < item.r) {
+                dragItem = item;
             }
-            
-            checkWin();
-            draw();
-        }
+        });
+    }
 
-        function onEnd() {
-            if (dragItem) dragItem.dragging = false;
-            dragItem = null;
-        }
+    function handleMove(ex, ey) {
+        if(!dragItem) return;
+        const rect = canvas.getBoundingClientRect();
+        dragItem.x = (ex - rect.left) * (canvas.width / rect.width);
+        dragItem.y = (ey - rect.top) * (canvas.height / rect.height);
+        draw();
+    }
 
-        function checkWin() {
-            const totalIn = apples.filter(a => a.inBasket).length;
-            if (totalIn === 3) {
-                instruction.innerHTML = "¡Excelente! 🎉 Lo lograste.";
-                instruction.style.color = "#8fb339";
+    function handleEnd() {
+        if(!dragItem) return;
+        const t = targets[0];
+        // Lógica de validación por nivel
+        if(dragItem.x > t.x && dragItem.x < t.x + t.w && dragItem.y > t.y && dragItem.y < t.y + t.h) {
+            if(currentLevel === 1) {
+                dragItem.in = true;
+                const count = items.filter(i => i.in).length;
+                if(count >= t.goal) msg.innerText = "¡Muy bien! ¡Nivel completado! 🎉";
             } else {
-                instruction.innerHTML = `🍎 Arrastra 3 manzanas (Llevas: ${totalIn})`;
-                instruction.style.color = "#5d4037";
+                if(dragItem.val == t.goal) msg.innerText = "¡Correcto! Eres un genio 🌟";
+                else { msg.innerText = "Intenta otra vez..."; setTimeout(()=>initLevel(currentLevel), 1000); }
             }
         }
+        dragItem = null;
+    }
 
-        function resetGame() {
-            apples.forEach((a, i) => {
-                a.x = 80 + (i * 90);
-                a.y = 100;
-                a.inBasket = false;
-            });
-            instruction.innerHTML = "🍎 Arrastra 3 manzanas a la cesta";
-            instruction.style.color = "#5d4037";
-            draw();
-        }
+    // Eventos
+    canvas.addEventListener('mousedown', e => handleInput(e.clientX, e.clientY));
+    window.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+    window.addEventListener('mouseup', handleEnd);
+    
+    canvas.addEventListener('touchstart', e => handleInput(e.touches[0].clientX, e.touches[0].clientY));
+    window.addEventListener('touchmove', e => handleMove(e.touches[0].clientX, e.touches[0].clientY));
+    window.addEventListener('touchend', handleEnd);
 
-        // Listeners
-        canvas.addEventListener('mousedown', onStart);
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onEnd);
-
-        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(e); }, {passive: false});
-        window.addEventListener('touchmove', (e) => { onMove(e); }, {passive: false});
-        window.addEventListener('touchend', onEnd);
-
-        window.addEventListener('resize', resize);
-        resize(); // Inicializar
-
-    </script>
+    function changeLevel(l) { initLevel(l); }
+    
+    window.onload = () => initLevel(1);
+</script>
 </body>
 </html>
